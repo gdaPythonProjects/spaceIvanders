@@ -17,7 +17,7 @@ pygame.display.set_caption('Space Invaders: Closing Up')
 clock = pygame.time.Clock()
 
 
-class Fighter(pygame.sprite.Sprite):
+class Player(pygame.sprite.Sprite):
     def __init__(self):
         pygame.sprite.Sprite.__init__(self)
         self.image = pygame.image.load('/home/remo/coding/python3/SI-ClosingUp/jet.png')
@@ -45,6 +45,26 @@ class Fighter(pygame.sprite.Sprite):
                 self.rect.x = mouseposition[0] - self.w/2
             if self.h < mouseposition[1] + self.h/2 < heigh:
                 self.rect.y = mouseposition[1] - self.h/2
+    def shoot(self):
+        bullet = Bullet(self.rect.centerx, self.rect.top)
+        all_sprites.add(bullet)
+        bullets.add(bullet)
+
+class Bullet(pygame.sprite.Sprite):
+    def __init__(self,x,y):
+        pygame.sprite.Sprite.__init__(self)
+        self.image = pygame.image.load('/home/remo/coding/python3/SI-ClosingUp/projectile.png')
+        self.rect = self.image.get_rect()
+        self.rect.bottom = y
+        self.rect.centerx = x
+        if player.vy < 0:
+            self.speed = -7 + player.vy
+        else:
+            self.speed = -7
+    def update(self):
+        self.rect.y += self.speed
+        if self.rect.bottom < 0:
+            self.kill()
 
 class Background(pygame.sprite.Sprite):
     def __init__(self):
@@ -60,12 +80,13 @@ class Background(pygame.sprite.Sprite):
         screen.blit(self.image, (0, self.y - self.h))
 
 
-vehicle_sprites = pygame.sprite.Group()
+all_sprites = pygame.sprite.Group()
+bullets = pygame.sprite.Group()
 
 background = Background()
-fighter = Fighter()
+player = Player()
 
-vehicle_sprites.add(fighter)
+all_sprites.add(player)
 
 #petla gry
 crashed = False
@@ -76,11 +97,14 @@ while not crashed:
         #sprawdzamy zamkniecie okna
         if event.type == pygame.QUIT:
             crashed = True
+        elif event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_SPACE:
+                player.shoot()
     #update
     background.scroll(screen)
-    vehicle_sprites.update()
+    all_sprites.update()
     #draw
-    vehicle_sprites.draw(screen)
+    all_sprites.draw(screen)
     #flip/display
     pygame.display.flip()
 
