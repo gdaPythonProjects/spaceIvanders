@@ -1,13 +1,16 @@
+import os
 import pygame
-import random
 
-width = 474
-heigh = 456
+dir = os.path.dirname(os.path.abspath(__file__))
+
+
+width = 800
+heigh = 600
 FPS = 60
 
-black = (0,0,0)
-white = (255,255,255)
-red = (255,0,0)
+epi = []
+
+eHP=2
 
 MouseSteering = False
 
@@ -16,14 +19,28 @@ screen = pygame.display.set_mode((width,heigh))
 pygame.display.set_caption('Space Invaders: Closing Up')
 clock = pygame.time.Clock()
 
+#wczytanie grafik
+img_bullet = pygame.image.load(dir + '/textures/shots/bullet.png')
+
+explosions = []
+for i in range (9):
+    explosions.append(pygame.image.load(dir + '/textures/explosions/regularExplosion0{}.png'.format(i)))
+
+enemies = []
+for e in range (14):
+    enemies.append(pygame.image.load(dir + '/textures/enemies/ufo{}.png'.format(e)))
 
 class Player(pygame.sprite.Sprite):
     def __init__(self):
+        self.hp = 3
+        self.hp_changed = False
         pygame.sprite.Sprite.__init__(self)
-        self.image = pygame.image.load('/home/remo/coding/python3/SI-ClosingUp/jet.png')
+        self.image = pygame.image.load(dir + '/textures/jet.png')
         self.rect = self.image.get_rect()
-        self.rect.center = (width/2, heigh/2)
+        self.rect.center = (width/2, heigh*3/4)
     def update(self):
+        ##if self.hp >= 0:
+        ##    explode
         self.vx, self.vy = 0, 0
         self.b = 5
         self.w, self.h = self.image.get_rect().size
@@ -53,7 +70,7 @@ class Player(pygame.sprite.Sprite):
 class Bullet(pygame.sprite.Sprite):
     def __init__(self,x,y):
         pygame.sprite.Sprite.__init__(self)
-        self.image = pygame.image.load('/home/remo/coding/python3/SI-ClosingUp/projectile.png')
+        self.image = img_bullet
         self.rect = self.image.get_rect()
         self.rect.bottom = y
         self.rect.centerx = x
@@ -63,13 +80,67 @@ class Bullet(pygame.sprite.Sprite):
             self.speed = -7
     def update(self):
         self.rect.y += self.speed
-        if self.rect.bottom < 0:
+        if self.rect.colliderect(enemy):
+            if enemy.hp > 0:
+                enemy.hp -= 1
+                enemy.hp_changed = True
             self.kill()
+        elif self.rect.colliderect(player):
+            if player.hp > 0:
+                player.hp -= 1
+                player.hp_changed = True
+            self.kill()
+        elif self.rect.bottom < 0:
+            self.kill()
+
+class Enemy(pygame.sprite.Sprite):
+    def __init__(self):
+        self.hp = eHP
+        self.hp_changed = False
+        pygame.sprite.Sprite.__init__(self)
+        self.image = enemies[self.hp]
+        self.rect = self.image.get_rect()
+        if player.rect.x > width/2:
+            self.rect.center = (width/4, heigh/8)
+        else:
+            self.rect.center = (width*3/4, heigh/8)
+    def update(self):
+        if self.hp_changed == True:
+            self.image = enemies[self.hp]
+            self.hp_changed = False
+        if self.hp <= 0:
+            epi.append(self.rect.center)
+            self.kill()
+            expl = Explosion()
+            all_sprites.add(expl)
+
+class Explosion(pygame.sprite.Sprite):
+    def __init__(self):
+        pygame.sprite.Sprite.__init__(self)
+        self.image = explosions[0]
+        self.rect = self.image.get_rect()
+        self.rect.center = epi[-1]
+        self.frame = 0
+        self.last_update = pygame.time.get_ticks()
+        self.frame_rate = 50
+    def update(self):
+        now = pygame.time.get_ticks()
+        if now - self.last_update > self.frame_rate:
+            self.last_update = now
+            self.frame += 1
+            if self.frame == len(explosions):
+                self.kill()
+                epi.pop(0)
+            else:
+                self.image = explosions[self.frame]
+                self.rect = self.image.get_rect()
+                self.rect.center = epi[-1]
+
 
 class Background(pygame.sprite.Sprite):
     def __init__(self):
         pygame.sprite.Sprite.__init__(self)
-        self.image = pygame.image.load('/home/remo/coding/python3/SI-ClosingUp/background.png').convert()
+        self.image = pygame.image.load(dir + '/textures/background.png')
         self.w, self.h = self.image.get_rect().size
         self.y = 0
     def scroll(self, screen):
@@ -80,13 +151,40 @@ class Background(pygame.sprite.Sprite):
         screen.blit(self.image, (0, self.y - self.h))
 
 
+class Hp_counter(pygame.sprite.Sprite):
+    def __init__(self):
+        pygame.sprite.Sprite.__init__(self)
+        self.image = pygame.image.load(dir + '/textures/counters/hp' + str(player.hp) + '.png')
+        self.rect = self.image.get_rect()
+        self.x = self.y = 15
+    def update(self):
+        if player.hp_changed == True:
+            self.image = pygame.image.load(dir + '/textures/counters/hp' + str(player.hp) + '.png')
+            player.hp_changed = False
+
+
+
+hud = pygame.sprite.Group()
 all_sprites = pygame.sprite.Group()
+players = pygame.sprite.Group()
+enemises = pygame.sprite.Group()
 bullets = pygame.sprite.Group()
 
 background = Background()
-player = Player()
 
+
+player = Player()
+hp_counter = Hp_counter()
+enemy = Enemy()
+
+all_sprites.add(hp_counter)
 all_sprites.add(player)
+all_sprites.add(enemy)
+
+players.add(player)
+enemises.add(enemy)
+
+hud.add(hp_counter)
 
 #petla gry
 crashed = False
